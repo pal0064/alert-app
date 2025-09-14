@@ -85,19 +85,13 @@ def check_and_alert():
     if is_charger_available(charger_status):
         message = f"🔋 **Charger Alert!** \n\nCharging slot is now available!\nStatus: {charger_status}\nTime: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         
-        success, result_message = send_discord_message(message)
-        
-        if success:
-            # Turn off notifications after sending alert
-            save_notification_state(False)
-            
-            return {
+        send_discord_message(message)
+        save_notification_state(False)
+        return {
                 "status": "alert_sent", 
                 "message": f"Alert sent for: {charger_status}",
                 "notifications_disabled": True
             }
-        else:
-            return {"status": "alert_failed", "message": result_message}
     else:
         return {
             "status": "no_alert_needed", 
@@ -122,29 +116,38 @@ def load_notification_state():
 # Handle API endpoint requests
 query_params = st.query_params
 if query_params.get("api") == "check_alert":
-    # API endpoint logic
+    # API endpoint logic - return raw JSON without UI
     result = check_and_alert()
-    st.json(result)
+    # Use st.write with unsafe_allow_html to output raw JSON
+    st.markdown(f'<script>document.body.innerHTML = \'{json.dumps(result)}\';</script>', unsafe_allow_html=True)
+    # Also print to console for debugging
+    # print(json.dumps(result))
     st.stop()
 elif query_params.get("api") == "enable_notifications":
     # Enable notifications API
     save_notification_state(True)
-    st.json({"status": "success", "message": "Notifications enabled"})
+    result = {"status": "success", "message": "Notifications enabled"}
+    st.markdown(f'<script>document.body.innerHTML = \'{json.dumps(result)}\';</script>', unsafe_allow_html=True)
+    # print(json.dumps(result))
     st.stop()
 elif query_params.get("api") == "disable_notifications":
     # Disable notifications API
     save_notification_state(False)
-    st.json({"status": "success", "message": "Notifications disabled"})
+    result = {"status": "success", "message": "Notifications disabled"}
+    st.markdown(f'<script>document.body.innerHTML = \'{json.dumps(result)}\';</script>', unsafe_allow_html=True)
+    print(json.dumps(result))
     st.stop()
 elif query_params.get("api") == "status":
     # Status check API
     notifications_enabled = load_notification_state()
     charger_status = check_charger_status()
-    st.json({
+    result = {
         "notifications_enabled": notifications_enabled,
         "charger_status": charger_status,
         "timestamp": datetime.now().isoformat()
-    })
+    }
+    st.markdown(f'<script>document.body.innerHTML = \'{json.dumps(result)}\';</script>', unsafe_allow_html=True)
+    print(json.dumps(result))
     st.stop()
 
 # Initialize session state

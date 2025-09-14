@@ -10,19 +10,11 @@ on:
 jobs:
   check-charger-alert:
     runs-on: ubuntu-latest
-    
+
     steps:
-      - name: Check for available chargers
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Run check alert script
         run: |
-          echo "Checking EV charger status at $(date)"
-          response=$(curl -s -w "HTTP_STATUS:%{http_code}" "https://evc-alert-app.streamlit.app/?api=check_alert")
-          http_status=$(echo "$response" | grep -o "HTTP_STATUS:[0-9]*" | cut -d: -f2)
-          body=$(echo "$response" | sed 's/HTTP_STATUS:[0-9]*$//')
-          
-          echo "Response: $body"
-          echo "HTTP Status: $http_status"
-          
-          if [ "$http_status" -ne 200 ]; then
-            echo "Error: API returned status $http_status"
-            exit 1
-          fi
+          bash .github/scripts/check_alert.sh "https://evc-alert-app.streamlit.app/?api=check_alert"
