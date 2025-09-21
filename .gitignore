@@ -1,2 +1,5 @@
 secrets.toml
 README.md
+.env
+.vercel
+api/__pycache__

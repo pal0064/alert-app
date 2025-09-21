@@ -1,132 +1,117 @@
-# EV Charger Alert App
+# EV Charger Alert API (Vercel)
 
-A single Streamlit app that monitors EV charging station availability and sends Discord notifications when slots become available. Designed for Streamlit Cloud deployment.
+A FastAPI-based application for monitoring EV charger availability and sending Discord alerts. This is a Vercel-compatible version of the Streamlit app.
 
 ## Features
 
-- 🔔 Toggle notifications on/off (default: off)
-- 🕐 API endpoints accessible via query parameters
-- 📱 Discord notifications when charging slots become available
-- 🔄 Auto-disable notifications after sending an alert
-- 🔍 Manual status checking anytime
-- ☁️ Single app deployment - perfect for Streamlit Cloud
-
-## Quick Setup for Streamlit Cloud
-
-1. **Fork/Clone this repository**
-
-2. **Deploy to Streamlit Cloud:**
-   - Go to [share.streamlit.io](https://share.streamlit.io)
-   - Connect your GitHub repository
-   - Deploy the app
-
-3. **Configure Discord Webhook in Streamlit Secrets:**
-   - In your Streamlit Cloud dashboard, go to app settings
-   - Add to secrets.toml:
-   ```toml
-   webhook_url = "your_discord_webhook_url_here"
-   ```
-
-4. **Your app is ready!** 🎉
+- Monitor EV charger status from web scraping
+- Send Discord webhook notifications when chargers become available
+- Enable/disable notification system
+- RESTful API endpoints
+- Automatic notification disabling after alert sent
 
 ## API Endpoints
 
-Your deployed app provides API endpoints via query parameters:
+### GET `/`
+Returns API information and available endpoints.
 
-### Available Endpoints:
+### GET `/api/check_alert`
+Checks charger status and sends Discord alert if available slots are found.
 
-**Check and Alert:**
-```
-https://your-app.streamlit.app/?api=check_alert
-```
-
-**Enable Notifications:**
-```
-https://your-app.streamlit.app/?api=enable_notifications
-```
-
-**Disable Notifications:**
-```
-https://your-app.streamlit.app/?api=disable_notifications
-```
-
-**Get Status:**
-```
-https://your-app.streamlit.app/?api=status
-```
-
-### Response Examples:
-
-**Notifications disabled:**
+**Response:**
 ```json
 {
-  "status": "notifications_disabled",
-  "message": "Notifications are disabled"
+  "status": "alert_sent|no_alert_needed|notifications_disabled|alert_failed",
+  "message": "Status description",
+  "notifications_disabled": true  // Only when alert is sent
 }
 ```
 
-**Alert sent:**
+### POST `/api/enable_notifications`
+Enables the notification system.
+
+**Response:**
 ```json
 {
-  "status": "alert_sent",
-  "message": "Alert sent for: 2 of 4 Available",
-  "notifications_disabled": true
+  "status": "success",
+  "message": "Notifications enabled"
 }
 ```
 
-**No alert needed:**
+### POST `/api/disable_notifications`
+Disables the notification system.
+
+**Response:**
 ```json
 {
-  "status": "no_alert_needed",
-  "message": "Current status: All stations busy"
+  "status": "success", 
+  "message": "Notifications disabled"
 }
 ```
 
-## Local Development
+### GET `/api/status`
+Returns current system status.
 
-If you want to run locally:
+**Response:**
+```json
+{
+  "notifications_enabled": true,
+  "charger_status": "2/4 Available",
+  "charger_available": true,
+  "timestamp": "2024-01-01T12:00:00"
+}
+```
+
+### GET `/health`
+Health check endpoint.
+
+## Environment Variables
+
+Set these in your Vercel environment settings:
+
+- `WEBHOOK_URL`: Your Discord webhook URL
+- `CHARGER_STATUS_URL`: URL to scrape for charger status
+
+## Deployment
+
+1. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+2. Deploy to Vercel:
+```bash
+vercel deploy
+```
+
+3. Set environment variables in Vercel dashboard
+
+## Usage Examples
 
 ```bash
-# Install dependencies
-pip install -r requirements.txt
+# Check and send alert if needed
+curl "https://your-app.vercel.app/api/check_alert"
 
-# Run the app
-streamlit run streamlit_app.py
+# Enable notifications
+curl -X POST "https://your-app.vercel.app/api/enable_notifications"
+
+# Disable notifications  
+curl -X POST "https://your-app.vercel.app/api/disable_notifications"
+
+# Check status
+curl "https://your-app.vercel.app/api/status"
 ```
 
-## Files
+## Automated Monitoring
 
-- `streamlit_app.py` - Main Streamlit application with API endpoints
-- `requirements.txt` - Python dependencies
-- `README.md` - This file
+You can set up automated monitoring using:
+- Vercel Cron Jobs
+- GitHub Actions
+- External cron services
+- Uptime monitoring services
 
-## Configuration
-
-### Streamlit Secrets (Recommended)
-Add to your Streamlit Cloud secrets:
-```toml
-webhook_url = "your_discord_webhook_url"
+Example with curl in a cron job:
+```bash
+# Check every 15 minutes
+*/15 * * * * curl "https://your-app.vercel.app/api/check_alert"
 ```
-
-### Query Parameter (Alternative)
-You can also pass the webhook URL as a query parameter:
-```
-https://your-app.streamlit.app/?api=check_alert&webhook_url=your_url
-```
-
-## Deployment Notes
-
-- ✅ **Single app** - No need for multiple services
-- ✅ **Streamlit Cloud compatible** - Uses query parameters for API
-- ✅ **Free hosting** - Works perfectly with Streamlit Cloud free tier
-- ✅ **External scheduling** - Use free services like GitHub Actions
-- ✅ **Persistent state** - Uses file-based storage for notification state
-- ✅ **No background threads** - All logic triggered by external calls
-
-## Monitoring
-
-When a charging slot becomes available, you'll receive a Discord notification and the notifications will automatically turn off.
-
-To re-enable notifications, either:
-- Use the web interface, or
-- Call the enable API: `https://your-app.streamlit.app/?api=enable_notifications`

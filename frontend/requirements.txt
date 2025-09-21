@@ -1,0 +1,5 @@
+# Streamlit Frontend Requirements
+streamlit>=1.28.0
+requests>=2.31.0
+streamlit-js>=0.1.5
+pytz>=2023.3
