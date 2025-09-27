@@ -9,6 +9,7 @@ import re
 import asyncio
 from typing import Dict, Any
 from dotenv import load_dotenv
+from supabase import create_client, Client
 
 # Load environment variables from .env file
 load_dotenv()
@@ -22,6 +23,51 @@ app = FastAPI(
 
 # Global variable to track if background task is running
 background_task_running = False
+
+# Supabase client
+supabase: Client = None
+
+def init_supabase() -> Client:
+    """Initialize Supabase client once"""
+    global supabase
+    if supabase is None:
+        url = os.getenv("SUPABASE_URL")
+        key = os.getenv("SUPABASE_ANON_KEY")
+        if not url or not key:
+            raise HTTPException(status_code=500, detail="Supabase credentials not configured")
+        supabase = create_client(url, key)
+    return supabase
+
+def ensure_notification_table_exists() -> None:
+    """Create notification_state table if it doesn't exist"""
+    try:
+        client = init_supabase()
+        # Try to query the table to see if it exists, if not it will fail and we handle it
+        result = client.table('notification_state').select('id').limit(1).execute()
+        
+        # If we get here, table exists. Check if default record exists
+        if not result.data:
+            # Table exists but no records, insert default
+            client.table('notification_state').insert({
+                'id': 1,
+                'notifications_enabled': False
+            }).execute()
+            
+    except Exception as e:
+        print(f"Table doesn't exist or other error: {e}")
+        # Table likely doesn't exist, but we can't create it via API
+        # The table needs to be created manually in Supabase dashboard
+        # For now, we'll try to insert and let it fail gracefully
+        try:
+            client.table('notification_state').insert({
+                'id': 1,
+                'notifications_enabled': False
+            }).execute()
+        except Exception as insert_error:
+            raise HTTPException(
+                status_code=500, 
+                detail="notification_state table doesn't exist. Please create it manually in Supabase with columns: id (int4, primary key), notifications_enabled (bool), created_at (timestamptz), updated_at (timestamptz)"
+            )
 
 def get_webhook_url() -> str:
     """Get Discord webhook URL from environment variables"""
@@ -113,25 +159,43 @@ def is_charger_available(status_text: str) -> bool:
         return False
 
 def save_notification_state(enabled: bool) -> None:
-    """Save notification state to file"""
-    state = {'notifications_enabled': enabled}
+    """Save notification state to Supabase"""
     try:
-        with open('/tmp/notification_state.json', 'w') as f:
-            json.dump(state, f)
+        ensure_notification_table_exists()
+        client = init_supabase()
+        
+        # Upsert the notification state
+        result = client.table('notification_state').upsert({
+            'id': 1,
+            'notifications_enabled': enabled,
+            'updated_at': datetime.now().isoformat()
+        }).execute()
+        
+        if not result.data:
+            raise Exception("Failed to save notification state to Supabase")
+            
     except Exception as e:
-        print(f"Error saving notification state: {e}")
+        print(f"Error saving notification state to Supabase: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to save notification state: {str(e)}")
 
 def load_notification_state() -> bool:
-    """Load notification state from file"""
+    """Load notification state from Supabase"""
     try:
-        with open('/tmp/notification_state.json', 'r') as f:
-            state = json.load(f)
-            return state.get('notifications_enabled', False)
-    except FileNotFoundError:
-        return False
+        ensure_notification_table_exists()
+        client = init_supabase()
+        
+        result = client.table('notification_state').select('notifications_enabled').eq('id', 1).execute()
+        
+        if result.data and len(result.data) > 0:
+            return result.data[0]['notifications_enabled']
+        else:
+            # No record exists, create default record and return False
+            save_notification_state(False)
+            return False
+            
     except Exception as e:
-        print(f"Error loading notification state: {e}")
-        return False
+        print(f"Error loading notification state from Supabase: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to load notification state: {str(e)}")
 
 async def automated_charger_check():
     """Background task to check charger status every 10 minutes"""
@@ -174,6 +238,7 @@ async def automated_charger_check():
 async def startup_event():
     """Start background task on app startup"""
     global background_task_running
+    
     if not background_task_running:
         background_task_running = True
         # Start the background task
@@ -210,13 +275,10 @@ async def check_alert() -> Dict[str, Any]:
     # Check if charging slot is actually available
     if is_charger_available(charger_status):
         message = f"🔋 **Charger Alert!** \n\nCharging slot is now available!\nStatus: {charger_status}\nTime: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-        
-        # Send Discord message
         success = send_discord_message(message)
         
         if success:
-            # Disable notifications after sending alert
-            save_notification_state(False)
+            await disable_notifications()
             return {
                 "status": "alert_sent", 
                 "message": f"Alert sent for: {charger_status}",

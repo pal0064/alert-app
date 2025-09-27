@@ -31,7 +31,7 @@ set +a
 # Set each variable individually
 if [ -n "$WEBHOOK_URL" ]; then
     echo "Setting WEBHOOK_URL..."
-    cd backend && echo "$WEBHOOK_URL" | vercel env add WEBHOOK_URL "$ENVIRONMENT" --force && cd ..
+    cd backend && printf "%s" "$WEBHOOK_URL" | vercel env add WEBHOOK_URL "$ENVIRONMENT" --force && cd ..
     if [ $? -eq 0 ]; then
         echo "✅ WEBHOOK_URL set"
     else
@@ -43,7 +43,7 @@ fi
 
 if [ -n "$CHARGER_STATUS_URL" ]; then
     echo "Setting CHARGER_STATUS_URL..."
-    cd backend && echo "$CHARGER_STATUS_URL" | vercel env add CHARGER_STATUS_URL "$ENVIRONMENT" --force && cd ..
+    cd backend && printf "%s" "$CHARGER_STATUS_URL" | vercel env add CHARGER_STATUS_URL "$ENVIRONMENT" --force && cd ..
     if [ $? -eq 0 ]; then
         echo "✅ CHARGER_STATUS_URL set"
     else
@@ -55,7 +55,7 @@ fi
 
 if [ -n "$SCHEDULE_API_KEY" ]; then
     echo "Setting SCHEDULE_API_KEY..."
-    cd backend && echo "$SCHEDULE_API_KEY" | vercel env add SCHEDULE_API_KEY "$ENVIRONMENT" --force && cd ..
+    cd backend && printf "%s" "$SCHEDULE_API_KEY" | vercel env add SCHEDULE_API_KEY "$ENVIRONMENT" --force && cd ..
     if [ $? -eq 0 ]; then
         echo "✅ SCHEDULE_API_KEY set"
     else
@@ -67,7 +67,7 @@ fi
 
 if [ -n "$SCHEDULE_JOB_ID" ]; then
     echo "Setting SCHEDULE_JOB_ID..."
-    cd backend && echo "$SCHEDULE_JOB_ID" | vercel env add SCHEDULE_JOB_ID "$ENVIRONMENT" --force && cd ..
+    cd backend && printf "%s" "$SCHEDULE_JOB_ID" | vercel env add SCHEDULE_JOB_ID "$ENVIRONMENT" --force && cd ..
     if [ $? -eq 0 ]; then
         echo "✅ SCHEDULE_JOB_ID set"
     else
@@ -75,6 +75,30 @@ if [ -n "$SCHEDULE_JOB_ID" ]; then
     fi
 else
     echo "⚠️  SCHEDULE_JOB_ID not found in .env"
+fi
+
+if [ -n "$SUPABASE_URL" ]; then
+    echo "Setting SUPABASE_URL..."
+    cd backend && printf "%s" "$SUPABASE_URL" | vercel env add SUPABASE_URL "$ENVIRONMENT" --force && cd ..
+    if [ $? -eq 0 ]; then
+        echo "✅ SUPABASE_URL set"
+    else
+        echo "❌ Failed to set SUPABASE_URL"
+    fi
+else
+    echo "⚠️  SUPABASE_URL not found in .env"
+fi
+
+if [ -n "$SUPABASE_ANON_KEY" ]; then
+    echo "Setting SUPABASE_ANON_KEY..."
+    cd backend && printf "%s" "$SUPABASE_ANON_KEY" | vercel env add SUPABASE_ANON_KEY "$ENVIRONMENT" --force && cd ..
+    if [ $? -eq 0 ]; then
+        echo "✅ SUPABASE_ANON_KEY set"
+    else
+        echo "❌ Failed to set SUPABASE_ANON_KEY"
+    fi
+else
+    echo "⚠️  SUPABASE_ANON_KEY not found in .env"
 fi
 
 echo ""
